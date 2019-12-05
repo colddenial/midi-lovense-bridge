@@ -76,18 +76,21 @@ public class MidiRelayRule implements LovenseConnectListener
 
     public boolean messageMatches(ShortMessage msg)
     {
-        if ((msg.getChannel()+1) == this.channel || this.channel == 0 )
+        if (this.relayTo != null)
         {
-            if (this.command == ShortMessage.CONTROL_CHANGE && msg.getCommand() == ShortMessage.CONTROL_CHANGE)
+            if ((msg.getChannel()+1) == this.channel || this.channel == 0 )
             {
-                if (msg.getData1() == this.data1 || this.data1 == 0)
+                if (this.command == ShortMessage.CONTROL_CHANGE && msg.getCommand() == ShortMessage.CONTROL_CHANGE)
                 {
-                    return true;
-                }
-            } else if (this.command == ShortMessage.NOTE_ON && (msg.getCommand() == ShortMessage.NOTE_ON || msg.getCommand() == ShortMessage.NOTE_OFF)) {
-                if (msg.getData1() == this.data1)
-                {
-                    return true;
+                    if (msg.getData1() == this.data1 || this.data1 == 0)
+                    {
+                        return true;
+                    }
+                } else if (this.command == ShortMessage.NOTE_ON && (msg.getCommand() == ShortMessage.NOTE_ON || msg.getCommand() == ShortMessage.NOTE_OFF)) {
+                    if (msg.getData1() == this.data1)
+                    {
+                        return true;
+                    }
                 }
             }
         }

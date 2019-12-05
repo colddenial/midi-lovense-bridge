@@ -245,6 +245,13 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         loadConfig();
     }
 
+    public static void repaintToys()
+    {
+        (new Thread (() -> {
+            MidiLovenseBridge.instance.toyList.repaint();
+        })).start();
+    }
+
     protected static String noteNumberToString(int i)
     {
         String[] noteString = new String[]{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
@@ -263,7 +270,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 {
                     LovenseToy toy = (LovenseToy) MidiLovenseBridge.this.toyList.getSelectedValue();
                     toy.vibrate(v);
-                    MidiLovenseBridge.this.toyList.repaint();
+                    MidiLovenseBridge.repaintToys();
                 } catch (Exception e2) {
 
                 }
@@ -284,7 +291,6 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 }
                 LovenseConnect.refreshIfNeeded();
                 MidiSource.refresh();
-                this.repaint();
             } catch (Exception e) {
                 //e.printStackTrace(System.err);
             }
@@ -369,6 +375,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public void toyUpdated(LovenseToy toy)
     {
         publishToyStatus(toy);
+        MidiLovenseBridge.repaintToys();
     }
 
     // Example: http://controlbox.lan/display?line{{toy.index}}={{toy.nickname}}%20{{toy.battery})%20{{toy.output1}}
@@ -433,17 +440,17 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     {
         if(msg instanceof ShortMessage)
         {
-            ShortMessage sm = (ShortMessage) msg;
+            final ShortMessage sm = (ShortMessage) msg;
             //System.err.println("Recieved Short Message Channel=" + String.valueOf(sm.getChannel()) + " CC=" + String.valueOf(sm.getData1()) + " value=" + String.valueOf(sm.getData2()));
             for (Enumeration<MidiRelayRule> mrre = this.rules.elements(); mrre.hasMoreElements();)
             {
-                MidiRelayRule mrr = mrre.nextElement();
+                final MidiRelayRule mrr = mrre.nextElement();
                 if (mrr.messageMatches(sm))
                 {
                     //System.err.println(shortMessageToString(sm) + " = " + mrr.dataToVibrate(sm.getData2()));
                     try
                     {
-                        mrr.processMessage(sm);
+                        (new Thread(() -> mrr.processMessage(sm))).start();
                     } catch (Exception e) {
                         e.printStackTrace(System.err);
                     }

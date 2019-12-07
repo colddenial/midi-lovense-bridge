@@ -1,0 +1,8 @@
+Package: midi-lovense-bridge
+Version: 1.0
+Section: misc
+Priority: low
+Architecture: all
+Description: Connect Midi hardware to lovense toys
+Depends: openjdk-11-jre
+Maintainer: openstatic.org <support@openstatic.org>

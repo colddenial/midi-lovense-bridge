@@ -1,0 +1,5 @@
+#!/bin/bash
+ME=$(basename $0)
+mkdir -p ~/.$ME/
+cd ~/.$ME/
+java -jar /usr/share/java/$ME.jar $*

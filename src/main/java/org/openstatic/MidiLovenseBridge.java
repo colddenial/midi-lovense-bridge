@@ -72,6 +72,7 @@ import javax.sound.midi.*;
 import org.json.*;
 import org.openstatic.lovense.*;
 import org.openstatic.lovense.swing.*;
+import org.openstatic.midi.*;
 
 public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener
 {
@@ -86,8 +87,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
     private LovenseToyListModel lovenseToyListModel;
     protected LovenseToyCellRenderer lovenseToyRenderer;
-    private MidiSourceCellRenderer midiRenderer;
-    private MidiSourceListModel midiListModel;
+    private MidiPortCellRenderer midiRenderer;
+    private MidiPortListModel midiListModel;
     private Thread mainThread;
     protected DefaultListModel<MidiRelayRule> rules;
     protected LinkedBlockingQueue<Runnable> taskQueue;
@@ -100,6 +101,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
+        MidiPortManager.init();
         this.keep_running = true;
         this.options = new JSONObject();
         this.taskQueue = new LinkedBlockingQueue<Runnable>();
@@ -109,7 +111,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.setLayout(new BorderLayout());
         try
         {
-            BufferedImage windowIcon = ImageIO.read(getClass().getResource("/windows.png"));
+            BufferedImage windowIcon = ImageIO.read(getClass().getResource("/res/windows.png"));
             this.setIconImage(windowIcon);
         } catch (Exception iconException) {}
         
@@ -198,9 +200,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.add(toysAndPower, BorderLayout.CENTER);
         this.add(ruleScrollPane, BorderLayout.PAGE_END);
 
-        this.midiListModel = new MidiSourceListModel();
-        this.midiRenderer = new MidiSourceCellRenderer();
-        MidiSource.addMidiSourceListener(this.midiListModel);
+        this.midiListModel = new MidiPortListModel();
+        this.midiRenderer = new MidiPortCellRenderer();
         this.midiList = new JList(this.midiListModel);
         this.midiList.addMouseListener(new MouseAdapter()
         {
@@ -210,13 +211,14 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
                if (index != -1)
                {
-                  MidiSource source = (MidiSource) MidiLovenseBridge.this.midiListModel.getElementAt(index);
+                  MidiPort source = (MidiPort) MidiLovenseBridge.this.midiListModel.getElementAt(index);
                   if (source.isOpened())
                   {
                       source.close();
+                      source.removeReceiver(MidiLovenseBridge.this);
                   } else {
                       source.open();
-                      source.setReceiver(MidiLovenseBridge.this);
+                      source.addReceiver(MidiLovenseBridge.this);
                   }
                   repaint();
                }
@@ -290,7 +292,6 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                     r.run();
                 }
                 LovenseConnect.refreshIfNeeded();
-                MidiSource.refresh();
             } catch (Exception e) {
                 //e.printStackTrace(System.err);
             }

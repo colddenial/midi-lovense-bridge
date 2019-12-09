@@ -35,6 +35,11 @@
         <artifactId>commons-lang3</artifactId>
         <version>3.9</version>
     </dependency>
+    <dependency>
+        <groupId>org.openstatic</groupId>
+        <artifactId>midi-tools</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </dependency>
   </dependencies>
   <reporting>
     <plugins>
@@ -56,7 +61,8 @@
           <includes>
             <include>*.png</include>
           </includes>
-      </resource>
+          <targetPath>res</targetPath>
+        </resource>
     </resources>
     <plugins>
         <plugin>

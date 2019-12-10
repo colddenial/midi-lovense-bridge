@@ -464,11 +464,20 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
     public void close() {}
 
+    public static File getConfigFile()
+    {
+        File homeDir = new File(System.getProperty("user.home"));
+        File configFile = new File(homeDir, ".midi-lovense-bridge.json");
+        System.err.println("Config File: " + configFile.toString());
+        return configFile;
+    }
+
     public void loadConfig()
     {
         try
         {
-            JSONObject configJson = loadJSONObject("config.json");
+            JSONObject configJson = loadJSONObject(getConfigFile());
+            System.err.println("Config: " + configJson.toString());
             if (configJson.has("rules"))
             {
                 JSONArray rulesJson = configJson.getJSONArray("rules");
@@ -499,18 +508,18 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             JSONObject configJson = new JSONObject();
             configJson.put("rules", rules_ja);
             configJson.put("options", this.options);
-            saveJSONObject("config.json", configJson);
+            System.err.println("Config: " + configJson.toString());
+            saveJSONObject(getConfigFile(), configJson);
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
     }
 
-    public static JSONObject loadJSONObject(String filename)
+    public static JSONObject loadJSONObject(File file)
     {
         try
         {
-            File load_file = new File(filename);
-            FileInputStream fis = new FileInputStream(load_file);
+            FileInputStream fis = new FileInputStream(file);
             StringBuilder builder = new StringBuilder();
             int ch;
             while((ch = fis.read()) != -1){
@@ -524,12 +533,11 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         }
     }
 
-    public static void saveJSONObject(String filename, JSONObject obj)
+    public static void saveJSONObject(File file, JSONObject obj)
     {
         try
         {
-            File load_file = new File(filename);
-            FileOutputStream fos = new FileOutputStream(load_file);
+            FileOutputStream fos = new FileOutputStream(file);
             PrintStream ps = new PrintStream(fos);
             ps.print(obj.toString());
             ps.close();

@@ -6,7 +6,7 @@
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Midi Lovense Bridge</name>
-  <url>http://openstatic.org/</url>
+  <url>http://openstatic.org/lovense/</url>
   <properties>
     <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
     <maven.compiler.source>1.8</maven.compiler.source>
@@ -140,14 +140,14 @@
                         <!-- expand "SNAPSHOT" to what is in the "USER" env variable -->
                         <snapshotEnv>USER</snapshotEnv>
                         <controlDir>${basedir}/src/deb/control</controlDir>
-                        <deb>${project.build.directory}/${artifactId}-${version}.deb</deb>
+                        <deb>${project.build.directory}/${project.artifactId}-${project.version}.deb</deb>
                         <dataSet>
                             <data>
                               <src>${project.build.directory}/${project.build.finalName}.jar</src>
                               <type>file</type>
                               <mapper>
                                 <type>perm</type>
-                                <prefix>/usr/share/${artifactId}/lib</prefix>
+                                <prefix>/usr/share/${project.artifactId}/lib</prefix>
                                 <user>loader</user>
                                 <group>loader</group>
                                 <filemode>755</filemode>
@@ -169,7 +169,7 @@
                               <type>file</type>
                               <mapper>
                                 <type>perm</type>
-                                <prefix>/usr/share/${artifactId}</prefix>
+                                <prefix>/usr/share/${project.artifactId}</prefix>
                                 <user>loader</user>
                                 <group>loader</group>
                                 <filemode>755</filemode>
@@ -178,11 +178,11 @@
                             <data>
                               <type>link</type>
                               <symlink>true</symlink>
-                              <linkName>/usr/share/java/${artifactId}.jar</linkName>
-                              <linkTarget>../${artifactId}/lib/${project.build.finalName}.jar</linkTarget>
+                              <linkName>/usr/share/java/${project.artifactId}.jar</linkName>
+                              <linkTarget>../${project.artifactId}/lib/${project.build.finalName}.jar</linkTarget>
                             </data>
                             <data>
-                              <src>${basedir}/src/deb/${artifactId}.desktop</src>
+                              <src>${basedir}/src/deb/${project.artifactId}.desktop</src>
                               <type>file</type>
                               <mapper>
                                 <type>perm</type>

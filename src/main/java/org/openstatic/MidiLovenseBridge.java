@@ -96,11 +96,14 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private boolean keep_running;
     private long lastToyClick;
     private JSONObject options;
-
+    private MidiRandomizerPort randomizerPort;
 
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
+        this.randomizerPort = new MidiRandomizerPort("Randomizer");
+        MidiPortManager.registerVirtualPort("random", this.randomizerPort);
+        this.randomizerPort.addRandomRule(1, 1, 0, 127);
         MidiPortManager.init();
         this.keep_running = true;
         this.options = new JSONObject();
@@ -490,6 +493,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             }
             if (configJson.has("options"))
                 this.options = configJson.getJSONObject("options");
+            if (configJson.has("lovenseDevices"))
+                LovenseConnect.addDevicesFromJSONArray(configJson.getJSONArray("lovenseDevices"));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -508,6 +513,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             JSONObject configJson = new JSONObject();
             configJson.put("rules", rules_ja);
             configJson.put("options", this.options);
+            configJson.put("lovenseDevices", LovenseConnect.getDevicesAsJSONArray());
             System.err.println("Config: " + configJson.toString());
             saveJSONObject(getConfigFile(), configJson);
         } catch (Exception e) {

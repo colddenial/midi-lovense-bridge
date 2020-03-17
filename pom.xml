@@ -200,7 +200,7 @@
        <plugin>
             <groupId>com.akathist.maven.plugins.launch4j</groupId>
             <artifactId>launch4j-maven-plugin</artifactId>
-            <version>1.5.2</version>
+            <version>1.7.25</version>
             <executions>
                 <execution>
                     <id>l4j-gui</id>
@@ -220,8 +220,7 @@
                         </classPath>
                         <icon>res/windows.ico</icon>
                         <jre>
-                            <minVersion>1.7.0</minVersion>
-                            <maxVersion>1.8.0</maxVersion>
+                            <minVersion>1.8.0</minVersion>
                             <initialHeapSize>512</initialHeapSize>
                             <maxHeapSize>1024</maxHeapSize>
                         </jre>

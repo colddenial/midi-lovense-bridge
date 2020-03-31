@@ -113,7 +113,7 @@
                 <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
                 <iconFile>res/lovense.icns</iconFile>
                 <jrePath>D:\jvms\osx_jre1.8.0_231.jre</jrePath>
-                <generateDiskImageFile>true</generateDiskImageFile>
+                <generateDiskImageFile>false</generateDiskImageFile>
             </configuration>
             <executions>
                 <execution>

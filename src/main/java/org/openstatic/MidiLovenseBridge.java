@@ -103,7 +103,14 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         super("Midi Lovense Bridge");
         this.randomizerPort = new MidiRandomizerPort("Randomizer");
         MidiPortManager.registerVirtualPort("random", this.randomizerPort);
-        this.randomizerPort.addRandomRule(1, 1, 0, 127);
+        JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();
+        rougeModWheel.put("channel", 1);
+        rougeModWheel.put("cc", 1);
+        rougeModWheel.put("min", 0);
+        rougeModWheel.put("max", 127);
+        rougeModWheel.put("smooth", true);
+        rougeModWheel.put("changeDelay", 2);
+        this.randomizerPort.addRandomRule(rougeModWheel);
         MidiPortManager.init();
         this.keep_running = true;
         this.options = new JSONObject();

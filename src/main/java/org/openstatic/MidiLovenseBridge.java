@@ -74,7 +74,7 @@ import org.openstatic.lovense.*;
 import org.openstatic.lovense.swing.*;
 import org.openstatic.midi.*;
 
-public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener
+public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener, MidiPortListener
 {
     protected JList toyList;
     private JList midiList;
@@ -84,6 +84,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private JMenuItem aboutMenuItem;
     private JMenuItem exitMenuItem;
     private JMenuItem addIpItem;
+    private JTabbedPane tabbed;
+    private LoggerMidiPort logger;
 
     private LovenseToyListModel lovenseToyListModel;
     protected LovenseToyCellRenderer lovenseToyRenderer;
@@ -101,7 +103,10 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
+        this.logger = new LoggerMidiPort("Logger");
+        this.logger.open();
         this.randomizerPort = new MidiRandomizerPort("Randomizer");
+        MidiPortManager.addMidiPortListener(this);
         MidiPortManager.registerVirtualPort("random", this.randomizerPort);
         JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();
         rougeModWheel.put("channel", 1);
@@ -180,7 +185,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             }
         });
         JScrollPane lovenseToyScrollPane = new JScrollPane(this.toyList, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        lovenseToyScrollPane.setBorder(new TitledBorder("Lovense Toys (double-click to create rule)"));
+        //lovenseToyScrollPane.setBorder(new TitledBorder("Lovense Toys (double-click to create rule)"));
         JPanel toysAndPower = new JPanel(new BorderLayout());
         JSlider powerSlider = new JSlider(JSlider.VERTICAL, 0, 20, 0);
         powerSlider.setBorder(new TitledBorder("Vibrate"));
@@ -206,8 +211,10 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                }
             }
         });
-
-        this.add(toysAndPower, BorderLayout.CENTER);
+        this.tabbed = new JTabbedPane();
+        this.tabbed.addTab("Lovense Toys", toysAndPower);
+        this.tabbed.addTab("Logger", this.logger);
+        this.add(this.tabbed, BorderLayout.CENTER);
         this.add(ruleScrollPane, BorderLayout.PAGE_END);
 
         this.midiListModel = new MidiPortListModel();
@@ -255,6 +262,49 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         }); 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         loadConfig();
+    }
+    
+    public void portAdded(int idx, MidiPort port)
+    {
+        this.logger.println("MIDI Port Added " + port.getName());
+        if (port.canTransmitMessages())
+            port.addReceiver(this.logger);
+    }
+    
+    public void portRemoved(int idx, MidiPort port)
+    {
+        this.logger.println("MIDI Port Removed " + port.getName());
+        port.removeReceiver(this.logger);
+    }
+    
+    public void portOpened(MidiPort port)
+    {
+        this.logger.println("MIDI Port Opened " + port.getName());
+    }
+    
+    public void portClosed(MidiPort port)
+    {
+        this.logger.println("MIDI Port Closed " + port.getName());
+    }
+    
+    public void mappingAdded(int idx, MidiPortMapping mapping)
+    {
+        
+    }
+    
+    public void mappingRemoved(int idx, MidiPortMapping mapping)
+    {
+        
+    }
+    
+    public void mappingOpened(MidiPortMapping mapping)
+    {
+        
+    }
+    
+    public void mappingClosed(MidiPortMapping mapping)
+    {
+        
     }
 
     public static void repaintToys()
@@ -376,11 +426,13 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public void toyAdded(int idx, LovenseToy toy)
     {
         toy.addLovenseToyListener(this);
+        this.logger.println("Toy Added " + toy.getNickname());
     }
 
     public void toyRemoved(int idx, LovenseToy toy)
     {
         toy.removeLovenseToyListener(this);
+        this.logger.println("Toy Removed " + toy.getNickname());
     }
     
     public void toyUpdated(LovenseToy toy)

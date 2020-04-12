@@ -309,9 +309,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
     public static void repaintToys()
     {
-        (new Thread (() -> {
-            MidiLovenseBridge.instance.toyList.repaint();
-        })).start();
+        MidiLovenseBridge.instance.toyList.repaint();
     }
 
     protected static String noteNumberToString(int i)

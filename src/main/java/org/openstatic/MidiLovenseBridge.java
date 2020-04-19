@@ -86,7 +86,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private JMenuItem addIpItem;
     private JTabbedPane tabbed;
     private LoggerMidiPort logger;
-
+    private RTPMidiPort rtpMidiPort;
     private LovenseToyListModel lovenseToyListModel;
     protected LovenseToyCellRenderer lovenseToyRenderer;
     private MidiPortCellRenderer midiRenderer;
@@ -108,6 +108,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.randomizerPort = new MidiRandomizerPort("Randomizer");
         MidiPortManager.addMidiPortListener(this);
         MidiPortManager.registerVirtualPort("random", this.randomizerPort);
+        this.rtpMidiPort = new RTPMidiPort("RTP Network", "MidiLovenseBridge" , 5004);
+        MidiPortManager.registerVirtualPort("rtp", this.rtpMidiPort);
         JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();
         rougeModWheel.put("channel", 1);
         rougeModWheel.put("cc", 1);

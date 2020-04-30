@@ -366,7 +366,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         } else if (cmd.equals("about")) {
             browseTo("http://openstatic.org/lovense/");
         } else if (cmd.equals("ipman")) {
-            String ip_port = JOptionPane.showInputDialog("Please enter an ip and httpPort for Lovense Connect\n(Example: 127.0.0.1:30110)\nIt may take a few moments for your toys to be found");
+            String ip_port = JOptionPane.showInputDialog("Please enter an ip and httpsPort for Lovense Connect\n(Example: 127.0.0.1:30110)\nIt may take a few moments for your toys to be found");
             if (ip_port != null)
             {
                 StringTokenizer st = new StringTokenizer(ip_port,":");

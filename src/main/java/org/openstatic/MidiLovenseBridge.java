@@ -110,6 +110,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         MidiPortManager.registerVirtualPort("random", this.randomizerPort);
         this.rtpMidiPort = new RTPMidiPort("RTP Network", "MidiLovenseBridge" , 5004);
         MidiPortManager.registerVirtualPort("rtp", this.rtpMidiPort);
+
         JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();
         rougeModWheel.put("channel", 1);
         rougeModWheel.put("cc", 1);
@@ -118,6 +119,25 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         rougeModWheel.put("smooth", true);
         rougeModWheel.put("changeDelay", 2);
         this.randomizerPort.addRandomRule(rougeModWheel);
+
+        JSONObject footPedal = MidiRandomizerPort.defaultRuleJSONObject();
+        footPedal.put("channel", 1);
+        footPedal.put("cc", 2);
+        footPedal.put("min", 0);
+        footPedal.put("max", 127);
+        footPedal.put("smooth", false);
+        footPedal.put("changeDelay", 5);
+        this.randomizerPort.addRandomRule(footPedal);
+
+        JSONObject footPedal2 = MidiRandomizerPort.defaultRuleJSONObject();
+        footPedal2.put("channel", 1);
+        footPedal2.put("cc", 3);
+        footPedal2.put("min", 0);
+        footPedal2.put("max", 127);
+        footPedal2.put("smooth", true);
+        footPedal2.put("changeDelay", 15);
+        this.randomizerPort.addRandomRule(footPedal2);
+
         MidiPortManager.init();
         this.keep_running = true;
         this.options = new JSONObject();

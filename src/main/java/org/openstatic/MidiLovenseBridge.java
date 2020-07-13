@@ -76,9 +76,9 @@ import org.openstatic.midi.*;
 
 public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener, MidiPortListener
 {
-    protected JList toyList;
-    private JList midiList;
-    private JList rulesList;
+    protected JList<LovenseToy> toyList;
+    private JList<MidiPort> midiList;
+    private JList<MidiRelayRule> rulesList;
     private JMenuBar menuBar;
     private JMenu fileMenu;
     private JMenuItem aboutMenuItem;
@@ -91,14 +91,17 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     protected LovenseToyCellRenderer lovenseToyRenderer;
     private MidiPortCellRenderer midiRenderer;
     private MidiPortListModel midiListModel;
+    private MidiRelayRuleCellRenderer ruleRenderer;
     private Thread mainThread;
     protected DefaultListModel<MidiRelayRule> rules;
-    protected LinkedBlockingQueue<Runnable> taskQueue;
     public static MidiLovenseBridge instance;
     private boolean keep_running;
     private long lastToyClick;
     private JSONObject options;
     private MidiRandomizerPort randomizerPort;
+    private JButton panicButton;
+    private long lastRuleClick;
+    private JSlider powerSlider;
 
     public MidiLovenseBridge()
     {
@@ -141,7 +144,6 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         MidiPortManager.init();
         this.keep_running = true;
         this.options = new JSONObject();
-        this.taskQueue = new LinkedBlockingQueue<Runnable>();
 
         MidiLovenseBridge.instance = this;
         centerWindow();
@@ -186,7 +188,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.lovenseToyListModel = new LovenseToyListModel();
 
         // Setup toy list
-        this.toyList = new JList(this.lovenseToyListModel);
+        this.toyList = new JList<LovenseToy>(this.lovenseToyListModel);
         this.toyList.setCellRenderer(this.lovenseToyRenderer);
         this.toyList.addMouseListener(new MouseAdapter()
         {
@@ -209,17 +211,29 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         JScrollPane lovenseToyScrollPane = new JScrollPane(this.toyList, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         //lovenseToyScrollPane.setBorder(new TitledBorder("Lovense Toys (double-click to create rule)"));
         JPanel toysAndPower = new JPanel(new BorderLayout());
-        JSlider powerSlider = new JSlider(JSlider.VERTICAL, 0, 20, 0);
+        this.powerSlider = new JSlider(JSlider.VERTICAL, 0, 20, 0);
         powerSlider.setBorder(new TitledBorder("Vibrate"));
         powerSlider.addChangeListener(this);
         powerSlider.setPreferredSize(new Dimension(60, 0));
         toysAndPower.add(lovenseToyScrollPane, BorderLayout.CENTER);
-        toysAndPower.add(powerSlider, BorderLayout.EAST);
+
+        this.panicButton = new JButton("PANIC!");
+        this.panicButton.addActionListener(this);
+        this.panicButton.setActionCommand("panic");
+
+        JPanel powerAndPanic = new JPanel(new BorderLayout());
+        powerAndPanic.add(powerSlider, BorderLayout.CENTER);
+        powerAndPanic.add(this.panicButton, BorderLayout.PAGE_END);
+
+        toysAndPower.add(powerAndPanic, BorderLayout.EAST);
+
+        this.ruleRenderer = new MidiRelayRuleCellRenderer();
 
         // Setup rule list
-        this.rulesList = new JList(this.rules);
+        this.rulesList = new JList<MidiRelayRule>(this.rules);
+        this.rulesList.setCellRenderer(this.ruleRenderer);
         JScrollPane ruleScrollPane = new JScrollPane(this.rulesList, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        ruleScrollPane.setBorder(new TitledBorder("Rules for Incoming MIDI Messages (click to edit)"));
+        ruleScrollPane.setBorder(new TitledBorder("Rules for Incoming MIDI Messages (double-click to toggle, right click to edit)"));
         this.rulesList.addMouseListener(new MouseAdapter()
         {
             public void mouseClicked(MouseEvent e)
@@ -228,8 +242,19 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
                if (index != -1)
                {
-                  MidiRelayRule source = (MidiRelayRule) MidiLovenseBridge.this.rules.getElementAt(index);
-                  MidiRelayRuleEditor editor = new MidiRelayRuleEditor(source);
+                   MidiRelayRule source = (MidiRelayRule) MidiLovenseBridge.this.rules.getElementAt(index);
+                   if (e.getButton() == MouseEvent.BUTTON1)
+                   {
+                       long cms = System.currentTimeMillis();
+                       if (cms - MidiLovenseBridge.this.lastRuleClick < 500 && MidiLovenseBridge.this.lastRuleClick > 0)
+                       {
+                          source.toggleEnabled();
+                       }
+                       MidiLovenseBridge.this.lastRuleClick = cms;
+                   } else if (e.getButton() == MouseEvent.BUTTON2 || e.getButton() == MouseEvent.BUTTON3) {
+                      MidiRelayRuleEditor editor = new MidiRelayRuleEditor(source);
+                   }
+                   MidiLovenseBridge.repaintRules();
                }
             }
         });
@@ -241,7 +266,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
         this.midiListModel = new MidiPortListModel();
         this.midiRenderer = new MidiPortCellRenderer();
-        this.midiList = new JList(this.midiListModel);
+        this.midiList = new JList<MidiPort>(this.midiListModel);
         this.midiList.addMouseListener(new MouseAdapter()
         {
             public void mousePressed(MouseEvent e)
@@ -331,7 +356,14 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
     public static void repaintToys()
     {
-        MidiLovenseBridge.instance.toyList.repaint();
+        Thread t = new Thread(() -> MidiLovenseBridge.instance.toyList.repaint());
+        t.start();
+    }
+
+    public static void repaintRules()
+    {
+        Thread t = new Thread(() -> MidiLovenseBridge.instance.rulesList.repaint());
+        t.start();
     }
 
     protected static String noteNumberToString(int i)
@@ -346,8 +378,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         if (!source.getValueIsAdjusting())
         {
             final int v = (int)source.getValue();
-            this.taskQueue.add(() ->
-            {
+            (new Thread(() -> {
                 try
                 {
                     LovenseToy toy = (LovenseToy) MidiLovenseBridge.this.toyList.getSelectedValue();
@@ -356,7 +387,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 } catch (Exception e2) {
 
                 }
-            });
+            })).start();;
         }
     }
 
@@ -366,11 +397,6 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         {
             try
             {
-                Runnable r = this.taskQueue.poll(1, TimeUnit.SECONDS);
-                if (r != null)
-                {
-                    r.run();
-                }
                 LovenseConnect.refreshIfNeeded();
             } catch (Exception e) {
                 //e.printStackTrace(System.err);
@@ -397,6 +423,23 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                     LovenseConnect.addDeviceManually(ip, port);
                 }
             }
+        } else if (cmd.equals("panic")) {
+            try
+            {
+                this.powerSlider.setValue(0);
+                for (Enumeration<MidiRelayRule> mrre = this.rules.elements(); mrre.hasMoreElements();)
+                {
+                    MidiRelayRule mrr = mrre.nextElement();
+                    mrr.setEnabled(false);
+                }
+                MidiLovenseBridge.repaintRules();
+                LovenseConnect.getToys().forEach((toy) -> {
+                    toy.vibrate(0);
+                });
+            } catch (Exception e2) {
+                
+            }
+            
         }
     }
     
@@ -486,7 +529,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.shortStatus\\}\\}", URLEncoder.encode(shortStatus, "UTF-8"));
 
                 PendingURLFetch puf = new PendingURLFetch(publishStatusUrl);
-                this.taskQueue.add(puf);
+                Thread t = new Thread(puf);
+                t.start();
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }

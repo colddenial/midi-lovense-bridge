@@ -14,6 +14,7 @@ public class MidiRelayRule implements LovenseConnectListener
     private String toyId;
     private String nickname;
     private LovenseToy relayTo;
+    private boolean enabled;
     
     public static final int FULL_RANGE = 0;
     public static final int TOP_HALF = 1;
@@ -36,6 +37,7 @@ public class MidiRelayRule implements LovenseConnectListener
         this.range = 0;
         this.output = 0;
         this.nickname = null;
+        this.enabled = true;
         LovenseConnect.addLovenseConnectListener(this);
     }
     
@@ -48,6 +50,7 @@ public class MidiRelayRule implements LovenseConnectListener
         this.output = jo.optInt("output", 0);
         this.toyId = jo.optString("toy", null);
         this.nickname = jo.optString("nickname", null);
+        this.enabled = jo.optBoolean("enabled", true);
         try
         {
             this.relayTo = LovenseConnect.getToyById(this.toyId);
@@ -149,7 +152,7 @@ public class MidiRelayRule implements LovenseConnectListener
 
     public void processMessage(ShortMessage msg)
     {
-        if (this.relayTo.isConnected())
+        if (this.relayTo.isConnected() && this.enabled)
         {
             int vv = 0;
             if (this.output == OUTPUT_AIR)
@@ -259,6 +262,21 @@ public class MidiRelayRule implements LovenseConnectListener
         this.output = output;
     }
 
+    public void setEnabled(boolean v)
+    {
+        this.enabled = v;
+    }
+
+    public boolean isEnabled()
+    {
+        return this.enabled;
+    }
+
+    public void toggleEnabled()
+    {
+        this.enabled = !this.enabled;
+    }
+
     public JSONObject toJSONObject()
     {
         JSONObject jo = new JSONObject();
@@ -274,6 +292,7 @@ public class MidiRelayRule implements LovenseConnectListener
             jo.put("toy", this.toyId);
         }
         jo.put("nickname", this.nickname);
+        jo.put("enabled", this.enabled);
         return jo;
     }
 

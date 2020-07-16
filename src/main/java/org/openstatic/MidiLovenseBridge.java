@@ -8,6 +8,7 @@ import java.io.PrintStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.File;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URLEncoder;
 
@@ -81,16 +82,23 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private long lastRuleClick;
     private JSlider powerSlider;
     private ImageIcon gears;
+    private String hostname;
 
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
+        InetAddress ip;
+        try 
+        {
+            ip = InetAddress.getLocalHost();
+            this.hostname = ip.getHostName();
+        } catch (Exception e) {}
         this.logger = new LoggerMidiPort("Logger");
         this.logger.open();
         this.randomizerPort = new MidiRandomizerPort("Randomizer");
         MidiPortManager.addMidiPortListener(this);
         MidiPortManager.registerVirtualPort("random", this.randomizerPort);
-        this.rtpMidiPort = new RTPMidiPort("RTP Network", "MidiLovenseBridge" , 5004);
+        this.rtpMidiPort = new RTPMidiPort("RTP Network", "MidiLovenseBridge" + hostname , 5014);
         MidiPortManager.registerVirtualPort("rtp", this.rtpMidiPort);
 
         JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();

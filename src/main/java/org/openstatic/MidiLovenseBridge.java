@@ -1,12 +1,7 @@
 package org.openstatic;
 
 import javax.sound.midi.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Vector;
 import java.util.Enumeration;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.StringTokenizer;
 
 import java.io.PrintStream;
@@ -20,28 +15,17 @@ import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JSlider;
 import javax.swing.DefaultListModel;
-import javax.swing.JLabel;
+import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.JOptionPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
-import javax.swing.JToggleButton;
 import javax.swing.JScrollPane;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
-import javax.swing.JSeparator;
-import javax.swing.SwingUtilities;
-import javax.swing.SwingConstants;
-import javax.swing.DefaultListModel;
 import javax.swing.UIManager;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.JScrollPane;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.border.TitledBorder;
@@ -49,25 +33,18 @@ import javax.swing.border.TitledBorder;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.BorderLayout;
-import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowEvent;
 import java.awt.event.KeyEvent;
-import java.awt.image.BufferedImage;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.Font;
-import java.awt.Color;
-import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Desktop;
 
-import org.apache.commons.lang3.StringUtils;
 
-import javax.sound.midi.*;
+import org.apache.commons.lang3.StringUtils;
 
 import org.json.*;
 import org.openstatic.lovense.*;
@@ -93,6 +70,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private MidiPortListModel midiListModel;
     private MidiRelayRuleCellRenderer ruleRenderer;
     private Thread mainThread;
+    private Thread publishToyStatusThread;
     protected DefaultListModel<MidiRelayRule> rules;
     public static MidiLovenseBridge instance;
     private boolean keep_running;
@@ -102,6 +80,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     private JButton panicButton;
     private long lastRuleClick;
     private JSlider powerSlider;
+    private ImageIcon gears;
 
     public MidiLovenseBridge()
     {
@@ -150,7 +129,8 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.setLayout(new BorderLayout());
         try
         {
-            BufferedImage windowIcon = ImageIO.read(getClass().getResource("/res/windows.png"));
+            BufferedImage windowIcon = ImageIO.read(getClass().getResource("/windows.png"));
+            this.gears = new ImageIcon(getClass().getResource("/gears.gif"));
             this.setIconImage(windowIcon);
         } catch (Exception iconException) {}
         
@@ -188,7 +168,22 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.lovenseToyListModel = new LovenseToyListModel();
 
         // Setup toy list
-        this.toyList = new JList<LovenseToy>(this.lovenseToyListModel);
+        this.toyList = new JList<LovenseToy>(this.lovenseToyListModel)
+        {
+            public void paintComponent(Graphics g)
+            {
+                super.paintComponent(g);
+                int toyCount = lovenseToyListModel.getSize();
+                if (toyCount == 0)
+                {
+                    int iconHeight = MidiLovenseBridge.this.gears.getIconHeight();
+                    int x = (this.getWidth() - MidiLovenseBridge.this.gears.getIconWidth()) / 2;
+                    int y = (this.getHeight() - iconHeight) / 2;
+                    MidiLovenseBridge.this.gears.paintIcon(this, g, x, y);
+                    g.drawString("Searching for LovenseConnect", x -10, y + iconHeight + 20);
+                }
+            }
+        };
         this.toyList.setCellRenderer(this.lovenseToyRenderer);
         this.toyList.addMouseListener(new MouseAdapter()
         {
@@ -310,7 +305,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         loadConfig();
     }
-    
+
     public void portAdded(int idx, MidiPort port)
     {
         this.logger.println("MIDI Port Added " + port.getName());
@@ -529,8 +524,19 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.shortStatus\\}\\}", URLEncoder.encode(shortStatus, "UTF-8"));
 
                 PendingURLFetch puf = new PendingURLFetch(publishStatusUrl);
-                Thread t = new Thread(puf);
-                t.start();
+                boolean launch = true;
+                if (this.publishToyStatusThread != null)
+                {
+                    if (this.publishToyStatusThread.isAlive())
+                    {
+                        launch = false;
+                    }
+                }
+                if (launch)
+                {
+                    this.publishToyStatusThread = new Thread(puf);
+                    this.publishToyStatusThread.start();
+                }
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }

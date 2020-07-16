@@ -57,11 +57,19 @@
   <build>
     <resources>
         <resource>
-          <directory>res/</directory>
+          <directory>src/main/resources/</directory>
           <includes>
             <include>*.png</include>
+            <include>*.html</include>
+            <include>*.css</include>
+            <include>*.jpg</include>
+            <include>*.js</include>
+            <include>*.gif</include>
+            <include>*.jks</include>
+            <include>*.json</include>
+            <include>*.ico</include>
+            <include>*.properties</include>
           </includes>
-          <targetPath>res</targetPath>
         </resource>
     </resources>
     <plugins>
@@ -111,7 +119,7 @@
             </dependencies>
             <configuration>
                 <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
-                <iconFile>res/lovense.icns</iconFile>
+                <iconFile>src/main/resources/lovense.icns</iconFile>
                 <jrePath>D:\jvms\osx_jre1.8.0_231.jre</jrePath>
                 <generateDiskImageFile>false</generateDiskImageFile>
             </configuration>
@@ -165,7 +173,7 @@
                               </mapper>
                             </data>
                             <data>
-                              <src>${basedir}/res/windows.png</src>
+                              <src>${basedir}/src/main/resources/windows.png</src>
                               <type>file</type>
                               <mapper>
                                 <type>perm</type>
@@ -218,7 +226,7 @@
                         <classPath>
                             <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
                         </classPath>
-                        <icon>res/windows.ico</icon>
+                        <icon>src/main/resources/windows.ico</icon>
                         <jre>
                             <minVersion>1.8.0</minVersion>
                             <initialHeapSize>512</initialHeapSize>

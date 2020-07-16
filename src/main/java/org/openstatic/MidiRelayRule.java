@@ -79,7 +79,7 @@ public class MidiRelayRule implements LovenseConnectListener
 
     public boolean messageMatches(ShortMessage msg)
     {
-        if (this.relayTo != null)
+        if (this.relayTo != null && this.enabled)
         {
             if ((msg.getChannel()+1) == this.channel || this.channel == 0 )
             {

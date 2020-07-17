@@ -51,6 +51,8 @@ import org.json.*;
 import org.openstatic.lovense.*;
 import org.openstatic.lovense.swing.*;
 import org.openstatic.midi.*;
+import org.openstatic.midi.providers.*;
+import org.openstatic.midi.ports.*;
 
 public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener, MidiPortListener
 {
@@ -97,9 +99,19 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         this.logger.open();
         this.randomizerPort = new MidiRandomizerPort("Randomizer");
         MidiPortManager.addMidiPortListener(this);
-        MidiPortManager.registerVirtualPort("random", this.randomizerPort);
+        MidiPortManager.addProvider(new DeviceMidiPortProvider());
+        if ((new File("./natives/")).exists())
+        {
+            MidiPortManager.addProvider(new JoystickMidiPortProvider());
+        } else {
+            System.err.println("Natives Directory not found, no joystick support");
+        }
+        CollectionMidiPortProvider cmpp = new CollectionMidiPortProvider();
+        MidiPortManager.addProvider(cmpp);
+
+        cmpp.add(this.randomizerPort);
         this.rtpMidiPort = new RTPMidiPort("RTP Network", "MidiLovenseBridge" + hostname , 5014);
-        MidiPortManager.registerVirtualPort("rtp", this.rtpMidiPort);
+        cmpp.add(this.rtpMidiPort);
 
         JSONObject rougeModWheel = MidiRandomizerPort.defaultRuleJSONObject();
         rougeModWheel.put("channel", 1);
@@ -186,7 +198,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 {
                     int iconHeight = MidiLovenseBridge.this.gears.getIconHeight();
                     int x = (this.getWidth() - MidiLovenseBridge.this.gears.getIconWidth()) / 2;
-                    int y = (this.getHeight() - iconHeight) / 2;
+                    int y = ((this.getHeight() - iconHeight) / 2) - 30;
                     MidiLovenseBridge.this.gears.paintIcon(this, g, x, y);
                     g.drawString("Searching for LovenseConnect", x -10, y + iconHeight + 20);
                 }
@@ -359,14 +371,12 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
 
     public static void repaintToys()
     {
-        Thread t = new Thread(() -> MidiLovenseBridge.instance.toyList.repaint());
-        t.start();
+        MidiLovenseBridge.instance.toyList.repaint();
     }
 
     public static void repaintRules()
     {
-        Thread t = new Thread(() -> MidiLovenseBridge.instance.rulesList.repaint());
-        t.start();
+        MidiLovenseBridge.instance.rulesList.repaint();
     }
 
     protected static String noteNumberToString(int i)

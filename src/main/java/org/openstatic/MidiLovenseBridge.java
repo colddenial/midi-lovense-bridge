@@ -601,7 +601,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                     //System.err.println(shortMessageToString(sm) + " = " + mrr.dataToVibrate(sm.getData2()));
                     try
                     {
-                        (new Thread(() -> mrr.processMessage(sm))).start();
+                        mrr.processMessage(sm);
                     } catch (Exception e) {
                         e.printStackTrace(System.err);
                     }

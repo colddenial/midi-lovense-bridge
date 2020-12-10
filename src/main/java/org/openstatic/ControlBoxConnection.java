@@ -1,9 +1,15 @@
 package org.openstatic;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
@@ -36,6 +42,10 @@ public class ControlBoxConnection implements Runnable
     private Thread keepAliveThread;
     private static JmDNS jmdns;
     private static ControlBoxConnection connection;
+    private PropertyChangeSupport propertyChangeSupport;
+    private JSONObject properties;
+    private static ArrayList<PropertyChangeListener> listeners;
+    private static String[] lastLines = new String[4];
 
     public static void main(String[] args)
     {
@@ -52,11 +62,31 @@ public class ControlBoxConnection implements Runnable
         }
     }
 
+    public static void addStaticPropertyChangeListener(PropertyChangeListener pcl)
+    {
+        if (!ControlBoxConnection.listeners.contains(pcl))
+        {
+            ControlBoxConnection.listeners.add(pcl);
+            if (ControlBoxConnection.connection != null)
+            {
+                ControlBoxConnection.connection.addPropertyChangeListener(pcl);
+            }
+        }
+    }
+
     public static void displayTextLine(int num, String text)
     {
-        JSONObject jo = new JSONObject();
-        jo.put("line" + String.valueOf(num), text);
-        ControlBoxConnection.transmit(jo);
+        if (num >=1 && num <=4)
+        {
+            if (text == null) text = "                    ";
+            if (!text.equals(ControlBoxConnection.lastLines[num-1]))
+            {
+                ControlBoxConnection.lastLines[num-1] = text;
+                JSONObject jo = new JSONObject();
+                jo.put("line" + String.valueOf(num), text);
+                ControlBoxConnection.transmit(jo);
+            }
+        }
     }
 
     public static void backlight(boolean value)
@@ -91,18 +121,23 @@ public class ControlBoxConnection implements Runnable
                 if (ControlBoxConnection.connection == null)
                 {
                     reconnect = true;
-                } else if (!ControlBoxConnection.connection.isConnected()) {
+                } else if (!ControlBoxConnection.connection.getWSUri().equals(url)) {
                     reconnect = true;
                 }
                 if (reconnect)
                 {
-                    ControlBoxConnection.connection = new ControlBoxConnection(url);
+                    ControlBoxConnection.connection = new ControlBoxConnection(url, ControlBoxConnection.listeners);
                     ControlBoxConnection.connection.connect();
                 }
             } else {
                System.err.println("not mine: " + serviceInfo.getName()); 
             }
         }
+    }
+
+    public String getWSUri()
+    {
+        return this.websocketUri;
     }
 
     public static void shutDownMDNS()
@@ -134,20 +169,32 @@ public class ControlBoxConnection implements Runnable
             if (ControlBoxConnection.jmdns == null)
             {
                 // Create a JmDNS instance
-                ControlBoxConnection.jmdns = JmDNS.create(InetAddress.getLocalHost());
+                InetAddress address = InetAddress.getLocalHost();
+                System.err.println("Address: " + address.toString());
+                ControlBoxConnection.jmdns = JmDNS.create(address);
 
                 // Add a service listener
                 ControlBoxConnection.jmdns.addServiceListener("_ws._tcp.local.", new ControlBoxSearch());
                 System.err.println("added service listener");
+            }
+            if (ControlBoxConnection.listeners == null)
+            {
+                ControlBoxConnection.listeners = new ArrayList<PropertyChangeListener>();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public ControlBoxConnection(String websocketUri) {
+    public ControlBoxConnection(String websocketUri, Collection<PropertyChangeListener> listeners) {
         this.websocketUri = websocketUri;
         this.stayConnected = true;
+        this.propertyChangeSupport = new PropertyChangeSupport(this);
+        for(PropertyChangeListener pcl : listeners)
+        {
+            this.propertyChangeSupport.addPropertyChangeListener(pcl);
+        }
+        this.properties = new JSONObject();
     }
 
     @Override
@@ -174,7 +221,16 @@ public class ControlBoxConnection implements Runnable
     }
 
     public void handleWebSocketEvent(JSONObject j) {
-        System.err.println(j.toString());
+        //System.err.println(j.toString());
+        Set<String> objectFieldSet = j.keySet();
+        Iterator<String> iterator = objectFieldSet.iterator();
+        while (iterator.hasNext()) {
+            String propertyName = iterator.next();
+            Object propertyValue = j.opt(propertyName);
+            //System.err.println("Fire prop change " + propertyName + " - " + propertyValue);
+            this.propertyChangeSupport.firePropertyChange(propertyName, this.properties.opt(propertyName), propertyValue);
+            this.properties.put(propertyName, propertyValue);
+        }
     }
 
     public void connect() {
@@ -270,6 +326,7 @@ public class ControlBoxConnection implements Runnable
     public static void transmit(JSONObject jo) {
         if (ControlBoxConnection.connection != null)
         {
+            System.err.println("ControlBox X-MIT: " + jo.toString());
             ControlBoxConnection.connection.send(jo);
         }
     }
@@ -292,5 +349,15 @@ public class ControlBoxConnection implements Runnable
         } else {
             return false;
         }
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener listener)
+    {
+        this.propertyChangeSupport.addPropertyChangeListener(listener);
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener)
+    {
+        this.propertyChangeSupport.removePropertyChangeListener(listener);
     }
 }

@@ -11,6 +11,8 @@ import java.io.File;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 import javax.swing.JFrame;
 import javax.swing.JList;
@@ -44,7 +46,6 @@ import java.awt.event.MouseEvent;
 import java.awt.Graphics;
 import java.awt.Desktop;
 
-
 import org.apache.commons.lang3.StringUtils;
 
 import org.json.*;
@@ -54,8 +55,8 @@ import org.openstatic.midi.*;
 import org.openstatic.midi.providers.*;
 import org.openstatic.midi.ports.*;
 
-public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener, ActionListener, LovenseToyListener, MidiPortListener
-{
+public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListener, Receiver, LovenseConnectListener,
+        ActionListener, LovenseToyListener, MidiPortListener {
     protected JList<LovenseToy> toyList;
     private JList<MidiPort> midiList;
     private JList<MidiRelayRule> rulesList;
@@ -211,17 +212,18 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             public void mouseClicked(MouseEvent e)
             {
                long cms = System.currentTimeMillis();
-               if (cms - MidiLovenseBridge.this.lastToyClick < 500 && MidiLovenseBridge.this.lastToyClick > 0)
+               int index = MidiLovenseBridge.this.toyList.locationToIndex(e.getPoint());
+               if (index != -1)
                {
-                   int index = MidiLovenseBridge.this.toyList.locationToIndex(e.getPoint());
-                   if (index != -1)
+                   LovenseToy t = (LovenseToy) MidiLovenseBridge.this.toyList.getSelectedValue();
+                   if (cms - MidiLovenseBridge.this.lastToyClick < 500 && MidiLovenseBridge.this.lastToyClick > 0)
                    {
-                      LovenseToy t = (LovenseToy) MidiLovenseBridge.this.toyList.getSelectedValue();
-                      MidiRelayRule newRule = new MidiRelayRule(0, ShortMessage.CONTROL_CHANGE, 0, t);
-                      MidiRelayRuleEditor editor = new MidiRelayRuleEditor(newRule, true);
+                        MidiRelayRule newRule = new MidiRelayRule(0, ShortMessage.CONTROL_CHANGE, 0, t);
+                        MidiRelayRuleEditor editor = new MidiRelayRuleEditor(newRule, true);
                    }
                }
                MidiLovenseBridge.this.lastToyClick = cms;
+               MidiLovenseBridge.this.publishToyStatuses();
             }
         });
         JScrollPane lovenseToyScrollPane = new JScrollPane(this.toyList, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -325,6 +327,58 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         }); 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         loadConfig();
+        ControlBoxConnection.addStaticPropertyChangeListener(new PropertyChangeListener() {
+
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+                // TODO Auto-generated method stub
+                int modelSize = MidiLovenseBridge.this.toyList.getModel().getSize();
+                if (modelSize > 0)
+                {
+                    int selectedToy = MidiLovenseBridge.this.toyList.getSelectedIndex();
+                    if (selectedToy == -1) selectedToy = 0;
+                    if (evt.getPropertyName().equals("whiteButton") && evt.getNewValue().equals(Integer.valueOf(1)))
+                    {
+                        int nextToy = selectedToy + 1;
+                        System.err.println("Next: " + String.valueOf(nextToy));
+                        if (nextToy < modelSize)
+                        {
+                            System.err.println("Setting index");
+                            MidiLovenseBridge.this.toyList.setSelectedIndex(nextToy);
+                        } else {
+                            MidiLovenseBridge.this.toyList.setSelectedIndex(0);
+                        }
+                    }
+                    if (evt.getPropertyName().equals("blackButton") && evt.getNewValue().equals(Integer.valueOf(1)))
+                    {
+                        panic();
+                    }
+                    if (evt.getPropertyName().equals("slider1"))
+                    {
+                        float val = ((Integer)evt.getNewValue()).floatValue();
+                        int vibrate = Math.round(val / 6.35f);
+                        LovenseToy toy = (LovenseToy) MidiLovenseBridge.this.toyList.getModel().getElementAt(selectedToy);
+                        toy.vibrate(vibrate);
+                    }
+                    if (evt.getPropertyName().equals("dial1"))
+                    {
+                        float val = ((Integer)evt.getNewValue()).floatValue();
+                        int vibrate = Math.round(val / 6.35f);
+                        LovenseToy toy = (LovenseToy) MidiLovenseBridge.this.toyList.getModel().getElementAt(selectedToy);
+                        toy.vibrate1(vibrate);
+                    }
+                    if (evt.getPropertyName().equals("dial2"))
+                    {
+                        float val = ((Integer)evt.getNewValue()).floatValue();
+                        int vibrate = Math.round(val / 6.35f);
+                        LovenseToy toy = (LovenseToy) MidiLovenseBridge.this.toyList.getModel().getElementAt(selectedToy);
+                        toy.vibrate2(vibrate);
+                    }
+                    MidiLovenseBridge.repaintToys();
+                }
+			}
+
+        });
     }
 
     public void portAdded(int idx, MidiPort port)
@@ -373,6 +427,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public static void repaintToys()
     {
         MidiLovenseBridge.instance.toyList.repaint();
+        MidiLovenseBridge.instance.publishToyStatuses();
     }
 
     public static void repaintRules()
@@ -439,21 +494,26 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
                 }
             }
         } else if (cmd.equals("panic")) {
-            try
+            panic();
+            
+        }
+    }
+
+    public void panic()
+    {
+        try
+        {
+            this.powerSlider.setValue(0);
+            for (Enumeration<MidiRelayRule> mrre = this.rules.elements(); mrre.hasMoreElements();)
             {
-                this.powerSlider.setValue(0);
-                for (Enumeration<MidiRelayRule> mrre = this.rules.elements(); mrre.hasMoreElements();)
-                {
-                    MidiRelayRule mrr = mrre.nextElement();
-                    mrr.setEnabled(false);
-                }
-                MidiLovenseBridge.repaintRules();
-                LovenseConnect.getToys().forEach((toy) -> {
-                    toy.vibrate(0);
-                });
-            } catch (Exception e2) {
-                
+                MidiRelayRule mrr = mrre.nextElement();
+                mrr.setEnabled(false);
             }
+            MidiLovenseBridge.repaintRules();
+            LovenseConnect.getToys().forEach((toy) -> {
+                toy.vibrate(0);
+            });
+        } catch (Exception e2) {
             
         }
     }
@@ -515,21 +575,40 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     
     public void toyUpdated(LovenseToy toy)
     {
-        publishToyStatus(toy);
         MidiLovenseBridge.repaintToys();
     }
 
-    // Example: http://controlbox.lan/display?line{{toy.index}}={{toy.nickname}}%20{{toy.battery})%20{{toy.output1}}
-    public void publishToyStatus(LovenseToy toy)
+    public void publishToyStatuses()
     {
-        String nickname = toy.getNickname();
-        int nickname_length = nickname.length();
-        int batt = toy.getBattery();
-        int toyIndex = LovenseConnect.toyIndex(toy)+1;
-        if (batt < 0) batt = 0;
-        if (batt > 100) batt = 100;
-        String shortStatus = StringUtils.rightPad(StringUtils.abbreviate(nickname, 8), 8) + StringUtils.leftPad(String.valueOf(batt) + "%", 4) + StringUtils.leftPad(String.valueOf(toy.getOutputOneValue()),4) + StringUtils.leftPad(String.valueOf(toy.getOutputTwoValue()),4);
-        ControlBoxConnection.displayTextLine(toyIndex, shortStatus);
+        int modelSize = this.toyList.getModel().getSize();
+        for(int rowIndex = 1; rowIndex <= 4; rowIndex++)
+        {
+            //System.err.println("Row " + String.valueOf(rowIndex));
+            int toyIndex = rowIndex - 1;
+            LovenseToy toy = (LovenseToy) this.toyList.getModel().getElementAt(toyIndex);
+            String shortStatus = null;
+            if (toy != null)
+            {
+                String selected = "";
+                String nickname = toy.getNickname();
+                //System.err.println(nickname);
+                int nickname_length = nickname.length();
+                int batt = toy.getBattery();
+                int selectedToy = toyList.getSelectedIndex();
+                if (selectedToy == toyIndex) selected = ">";
+                if (batt < 0) batt = 0;
+                if (batt > 100) batt = 100;
+                shortStatus = StringUtils.rightPad(selected, 1) + StringUtils.rightPad(StringUtils.abbreviate(nickname, 8), 9) + StringUtils.leftPad(String.valueOf(batt) + "%", 4) + StringUtils.leftPad(String.valueOf(toy.getOutputOneValue()),3) + StringUtils.leftPad(String.valueOf(toy.getOutputTwoValue()),3);
+            }
+            ControlBoxConnection.displayTextLine(rowIndex, shortStatus);
+        }
+    }
+
+    // Example: http://controlbox.lan/display?line{{toy.index}}={{toy.nickname}}%20{{toy.battery})%20{{toy.output1}}
+    public void publishToyStatus(int toyIndex, LovenseToy toy)
+    {
+        
+        /*
         if (this.options.has("publishStatusUrl"))
         {
             try
@@ -560,7 +639,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }
-        }
+        }*/
     }
     
     private static String shortMessageToString(ShortMessage msg)

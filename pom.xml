@@ -11,6 +11,7 @@
     <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <jettyVersion>9.4.30.v20200611</jettyVersion>
   </properties>
   <repositories>
     <repository>
@@ -39,6 +40,17 @@
         <groupId>org.openstatic</groupId>
         <artifactId>midi-tools</artifactId>
         <version>1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.jmdns/jmdns -->
+    <dependency>
+        <groupId>org.jmdns</groupId>
+        <artifactId>jmdns</artifactId>
+        <version>3.5.6</version>
     </dependency>
   </dependencies>
   <reporting>

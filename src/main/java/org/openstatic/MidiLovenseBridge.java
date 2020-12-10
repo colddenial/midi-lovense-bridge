@@ -89,6 +89,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
+        ControlBoxConnection.init();
         InetAddress ip;
         try 
         {
@@ -411,6 +412,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
             try
             {
                 LovenseConnect.refreshIfNeeded();
+                Thread.sleep(1000);
             } catch (Exception e) {
                 //e.printStackTrace(System.err);
             }
@@ -520,25 +522,25 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     // Example: http://controlbox.lan/display?line{{toy.index}}={{toy.nickname}}%20{{toy.battery})%20{{toy.output1}}
     public void publishToyStatus(LovenseToy toy)
     {
+        String nickname = toy.getNickname();
+        int nickname_length = nickname.length();
+        int batt = toy.getBattery();
+        int toyIndex = LovenseConnect.toyIndex(toy)+1;
+        if (batt < 0) batt = 0;
+        if (batt > 100) batt = 100;
+        String shortStatus = StringUtils.rightPad(StringUtils.abbreviate(nickname, 8), 8) + StringUtils.leftPad(String.valueOf(batt) + "%", 4) + StringUtils.leftPad(String.valueOf(toy.getOutputOneValue()),4) + StringUtils.leftPad(String.valueOf(toy.getOutputTwoValue()),4);
+        ControlBoxConnection.displayTextLine(toyIndex, shortStatus);
         if (this.options.has("publishStatusUrl"))
         {
             try
             {
-                String nickname = toy.getNickname();
-                int nickname_length = nickname.length();
-                
                 String publishStatusUrl = this.options.getString("publishStatusUrl");
-                publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.index\\}\\}", String.valueOf(LovenseConnect.toyIndex(toy)+1));
+                publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.index\\}\\}", String.valueOf(toyIndex));
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.name\\}\\}", URLEncoder.encode(toy.getName(), "UTF-8"));
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.nickname\\}\\}", URLEncoder.encode(nickname, "UTF-8"));
-                int batt = toy.getBattery();
-                if (batt < 0) batt = 0;
-                if (batt > 100) batt = 100;
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.battery\\}\\}", URLEncoder.encode(String.valueOf(batt) + "%", "UTF-8"));
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.output1\\}\\}", URLEncoder.encode(String.valueOf(toy.getOutputOneValue()), "UTF-8"));
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.output2\\}\\}", URLEncoder.encode(String.valueOf(toy.getOutputTwoValue()), "UTF-8"));
-                
-                String shortStatus = StringUtils.rightPad(StringUtils.abbreviate(nickname, 8), 8) + StringUtils.leftPad(String.valueOf(batt) + "%", 4) + StringUtils.leftPad(String.valueOf(toy.getOutputOneValue()),4) + StringUtils.leftPad(String.valueOf(toy.getOutputTwoValue()),4);
                 publishStatusUrl = publishStatusUrl.replaceAll("\\{\\{toy.shortStatus\\}\\}", URLEncoder.encode(shortStatus, "UTF-8"));
 
                 PendingURLFetch puf = new PendingURLFetch(publishStatusUrl);

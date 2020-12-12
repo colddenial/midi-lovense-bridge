@@ -1,20 +1,27 @@
 package org.openstatic;
 
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
+import javax.jmdns.impl.DNSRecord.IPv4Address;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -32,24 +39,30 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
-public class ControlBoxConnection implements Runnable
-{
+public class ControlBoxConnection implements Runnable {
     private WebSocketClient upstreamClient;
     private WebSocketSession session;
     private EventsWebSocket socket;
     private String websocketUri;
     private boolean stayConnected;
     private Thread keepAliveThread;
-    private static JmDNS jmdns;
+    private static ArrayList<JmDNS> jmdns;
     private static ControlBoxConnection connection;
     private PropertyChangeSupport propertyChangeSupport;
     private JSONObject properties;
     private static ArrayList<PropertyChangeListener> listeners;
     private static String[] lastLines = new String[4];
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         ControlBoxConnection.init();
+        ControlBoxConnection.addStaticPropertyChangeListener(new PropertyChangeListener() {
+
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                System.err.println(evt.toString());
+            }
+            
+        });
         try
         {
             while(true)
@@ -145,13 +158,16 @@ public class ControlBoxConnection implements Runnable
         if (ControlBoxConnection.jmdns != null)
         {
             System.err.println("Please Wait for mDNS to unregister....");
-            try
-            {
-                ControlBoxConnection.jmdns.unregisterAllServices();
-                ControlBoxConnection.jmdns.close();
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-            }
+            ControlBoxConnection.jmdns.forEach((mDNS) -> {
+                try
+                {
+                    System.err.println("Unregister " + mDNS.getInetAddress().toString());
+                    mDNS.unregisterAllServices();
+                    mDNS.close();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+            });
         }
     }
 
@@ -159,23 +175,42 @@ public class ControlBoxConnection implements Runnable
     {
         try
         {
-            Runtime.getRuntime().addShutdownHook(new Thread()
-            {
-                public void run()
-                {
-                    ControlBoxConnection.shutDownMDNS();
-                }
-            });
             if (ControlBoxConnection.jmdns == null)
             {
-                // Create a JmDNS instance
-                InetAddress address = InetAddress.getLocalHost();
-                System.err.println("Address: " + address.toString());
-                ControlBoxConnection.jmdns = JmDNS.create(address);
-
-                // Add a service listener
-                ControlBoxConnection.jmdns.addServiceListener("_ws._tcp.local.", new ControlBoxSearch());
-                System.err.println("added service listener");
+                ControlBoxConnection.jmdns = new ArrayList<JmDNS>();
+                Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+                for (NetworkInterface netint : Collections.list(nets))
+                {
+                    //System.err.println("Interface: " + netint.getDisplayName());
+                    // Create a JmDNS instance
+                    Enumeration<InetAddress> addresses = netint.getInetAddresses();
+                    Collections.list(addresses).forEach((address) -> {
+                        if (address instanceof Inet4Address)
+                        {
+                            try
+                            {
+                                //System.err.println("Address: " + address.toString());
+                                JmDNS jm = JmDNS.create(address);
+                                jm.addServiceListener("_ws._tcp.local.", new ControlBoxSearch());
+                                ControlBoxConnection.jmdns.add(jm);
+                                System.err.println("Created JMDNS for (" + address.toString() + ")!");
+                            } catch (Exception e) {
+                                //e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+                Runtime.getRuntime().addShutdownHook(new Thread()
+                {
+                    public void run()
+                    {
+                        if (ControlBoxConnection.connection != null)
+                        {
+                            ControlBoxConnection.connection.stayConnected = false;
+                        }
+                        ControlBoxConnection.shutDownMDNS();
+                    }
+                });
             }
             if (ControlBoxConnection.listeners == null)
             {
@@ -199,7 +234,7 @@ public class ControlBoxConnection implements Runnable
 
     @Override
     public void run() {
-        while (this.keepAliveThread != null) {
+        while (this.keepAliveThread != null && ControlBoxConnection.connection == this) {
             try {
                 Thread.sleep(10000);
                 if (this.isConnected()) {
@@ -217,7 +252,10 @@ public class ControlBoxConnection implements Runnable
                 e.printStackTrace();
             }
         }
-
+        if (ControlBoxConnection.connection != this)
+        {
+            this.close();
+        }
     }
 
     public void handleWebSocketEvent(JSONObject j) {
@@ -284,6 +322,7 @@ public class ControlBoxConnection implements Runnable
         @OnWebSocketConnect
         public void onConnect(Session session) throws IOException {
             // System.err.println("Connected websocket");
+            ControlBoxConnection.lastLines = new String[4];
             if (session instanceof WebSocketSession) {
                 ControlBoxConnection.this.session = (WebSocketSession) session;
                 if (ControlBoxConnection.this.keepAliveThread == null) {

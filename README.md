@@ -3,12 +3,12 @@
 This tool is designed to make it easy to control your lovense toys with a midi controller.
 
 Download page for packages:
-https://openstatic.org/lovense/
+https://openstatic.org/projects/lovense/
 
 ### Why? ###
 I've always been a fan of the MIDI protocol, its a great way to control and automate simple devices. This software translates the 0-127 value from control sliders and note messages to a simple 0-20 value for the target device. Part of my inspiration came from the movie "Barbarella" where Durand-Durand uses an organ of sorts to control his odd sex machine. The possibilities are endless, you can use just about any MIDI device from the Rock Band Pro guitar to a simple DJ control surface.
 
-![](http://openstatic.org/lovense/bridge.png)
+![](http://openstatic.org/projects/lovense/bridge.png)
 
 ### How do I use it? ###
 I tried to make usage really simple and straightforward. This software utilizes the LAN API provided by the "Lovense Connect" app. This app should automatically recognize your toy a few seconds after it's been paired with the Lovense Connect app on your phone. In order for everything to work your phone and computer must be on the same Wifi Network.
@@ -25,7 +25,7 @@ If you are having trouble finding your Lovense Connect click on file -> enter ip
 **Creating a rule**
 "Rules" are mappings from your MIDI controller to your lovense device. You can create a rule by double-clicking on the toy you wish to create a rule for.
 
-![](http://openstatic.org/lovense/rule_editor.png)
+![](http://openstatic.org/projects/lovense/rule_editor.png)
 
 - Select Command - This lets you choose between control change messages and Note On/Off Messages
 - Select Channel - Choose which MIDI Channel to listen on

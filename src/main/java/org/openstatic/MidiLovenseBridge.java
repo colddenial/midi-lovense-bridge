@@ -90,7 +90,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
     public MidiLovenseBridge()
     {
         super("Midi Lovense Bridge");
-        ControlBoxConnection.init();
+        ControlBoxConnection.init("Lovense");
         InetAddress ip;
         try 
         {
@@ -536,7 +536,7 @@ public class MidiLovenseBridge extends JFrame implements Runnable, ChangeListene
         Dimension screenSize = tk.getScreenSize();
         final float WIDTH = screenSize.width;
         final float HEIGHT = screenSize.height;
-        int wWidth = 800;
+        int wWidth = 900;
         int wHeight = 600;
         Dimension d = new Dimension(wWidth, wHeight);
         this.setSize(d);

@@ -44,6 +44,8 @@ public class ControlBoxConnection implements Runnable {
     private WebSocketSession session;
     private EventsWebSocket socket;
     private String websocketUri;
+    private static String deviceName;
+    private static int deviceId = 0;
     private boolean stayConnected;
     private Thread keepAliveThread;
     private static ArrayList<JmDNS> jmdns;
@@ -54,7 +56,7 @@ public class ControlBoxConnection implements Runnable {
     private static String[] lastLines = new String[4];
 
     public static void main(String[] args) {
-        ControlBoxConnection.init();
+        ControlBoxConnection.init("TEST");
         ControlBoxConnection.addStaticPropertyChangeListener(new PropertyChangeListener() {
 
             @Override
@@ -96,6 +98,7 @@ public class ControlBoxConnection implements Runnable {
             {
                 ControlBoxConnection.lastLines[num-1] = text;
                 JSONObject jo = new JSONObject();
+                jo.put("dev", ControlBoxConnection.deviceId);
                 jo.put("line" + String.valueOf(num), text);
                 ControlBoxConnection.transmit(jo);
             }
@@ -171,8 +174,9 @@ public class ControlBoxConnection implements Runnable {
         }
     }
 
-    public static void init()
+    public static void init(String devName)
     {
+        ControlBoxConnection.deviceName = devName;
         try
         {
             if (ControlBoxConnection.jmdns == null)
@@ -259,15 +263,24 @@ public class ControlBoxConnection implements Runnable {
     }
 
     public void handleWebSocketEvent(JSONObject j) {
-        //System.err.println(j.toString());
-        Set<String> objectFieldSet = j.keySet();
-        Iterator<String> iterator = objectFieldSet.iterator();
-        while (iterator.hasNext()) {
-            String propertyName = iterator.next();
-            Object propertyValue = j.opt(propertyName);
-            //System.err.println("Fire prop change " + propertyName + " - " + propertyValue);
-            this.propertyChangeSupport.firePropertyChange(propertyName, this.properties.opt(propertyName), propertyValue);
-            this.properties.put(propertyName, propertyValue);
+        if (j.has("register")) {
+            System.err.println("CONTROLBOX REG " + j.toString());
+            if (ControlBoxConnection.deviceName.equals(j.optString("register")))
+            {
+                ControlBoxConnection.deviceId = j.optInt("dev",0);
+                System.err.println("REGISTERED this CONTROLBOX " + String.valueOf(ControlBoxConnection.deviceId));
+            }
+        } else if (j.optInt("dev", -1) == ControlBoxConnection.deviceId) {
+            //System.err.println(j.toString());
+            Set<String> objectFieldSet = j.keySet();
+            Iterator<String> iterator = objectFieldSet.iterator();
+            while (iterator.hasNext()) {
+                String propertyName = iterator.next();
+                Object propertyValue = j.opt(propertyName);
+                //System.err.println("Fire prop change " + propertyName + " - " + propertyValue);
+                this.propertyChangeSupport.firePropertyChange(propertyName, this.properties.opt(propertyName), propertyValue);
+                this.properties.put(propertyName, propertyValue);
+            }
         }
     }
 
@@ -311,6 +324,7 @@ public class ControlBoxConnection implements Runnable {
 
         @OnWebSocketMessage
         public void onText(Session session, String message) throws IOException {
+            System.err.println(" **** CONTROL BOX RECV **** " + message);
             try {
                 JSONObject jo = new JSONObject(message);
                 ControlBoxConnection.this.handleWebSocketEvent(jo);
@@ -329,6 +343,9 @@ public class ControlBoxConnection implements Runnable {
                     ControlBoxConnection.this.keepAliveThread = new Thread(ControlBoxConnection.this);
                     ControlBoxConnection.this.keepAliveThread.start();
                 }
+                JSONObject registerObject = new JSONObject();
+                registerObject.put("register", ControlBoxConnection.deviceName);
+                transmit(registerObject);
             } else {
                 // System.err.println("Not an instance of WebSocketSession");
             }
@@ -367,6 +384,8 @@ public class ControlBoxConnection implements Runnable {
         {
             System.err.println("ControlBox X-MIT: " + jo.toString());
             ControlBoxConnection.connection.send(jo);
+        } else {
+            System.err.println("ControlBox FAILED X-MIT: " + jo.toString());
         }
     }
 

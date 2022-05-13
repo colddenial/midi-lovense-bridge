@@ -11,7 +11,7 @@
     <mainClass>org.openstatic.MidiLovenseBridge</mainClass>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <jettyVersion>9.4.30.v20200611</jettyVersion>
+    <jettyVersion>10.0.2</jettyVersion>
   </properties>
   <repositories>
     <repository>
